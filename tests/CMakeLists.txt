@@ -64,6 +64,20 @@ if(HUMBLENET_DESKTOP)
 	)
 
 	add_dependencies(humblenet_test_loader humblenet_shared)
+
+	CreateTool(humblenet_test_circular_buffer
+	FILES
+		test_circular_buffer.cpp
+		../src/humblenet/src/mutex.cpp
+		../src/humblenet/src/mutex.h
+	FEATURES
+		cxx_noexcept cxx_explicit_conversions
+	PROPERTIES
+		FOLDER HumbleNet/Tests
+	)
+	list(APPEND TEST_TARGETS
+		humblenet_test_circular_buffer
+	)
 endif()
 
 CreateTool(humblenet_hello_world
