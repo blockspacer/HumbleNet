@@ -9,6 +9,7 @@
 #include <vector>
 #include <map>
 
+#include "humblenet.h"
 #include "humblepeer_generated.h"
 
 #ifdef __GNUC__
@@ -107,10 +108,12 @@ namespace humblenet {
 	ha_bool sendP2PRelayData(humblenet::P2PSignalConnection *conn, PeerId peer, const void* data, uint16_t length);
 
 	// Name Alias
-	ha_bool sendAliasRegister(P2PSignalConnection *conn, const std::string& alias);
-	ha_bool sendAliasUnregister(P2PSignalConnection *conn, const std::string& alias);
-	ha_bool sendAliasLookup(P2PSignalConnection *conn, const std::string& alias);
-	ha_bool sendAliasResolved(P2PSignalConnection *conn, const std::string& alias, PeerId peer);
+	ha_requestId sendAliasRegister(P2PSignalConnection *conn, const std::string& alias);
+	ha_requestId sendAliasUnregister(P2PSignalConnection *conn, const std::string& alias);
+	ha_requestId sendAliasLookup(P2PSignalConnection *conn, const std::string& alias);
+	ha_bool sendAliasResolved(P2PSignalConnection *conn, const std::string& alias, PeerId peer, ha_requestId requestId);
+	ha_bool sendAliasRegisterSuccess(P2PSignalConnection *conn, ha_requestId requestId);
+	ha_bool sendAliasRegisterError(P2PSignalConnection *conn, ha_requestId requestId, const std::string& error);
 
 }  // namespace humblenet
 

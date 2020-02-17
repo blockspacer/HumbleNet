@@ -1,5 +1,6 @@
 #include "humblenet_p2p_internal.h"
 #include "humblenet_alias.h"
+#include "humblenet_events_internal.h"
 
 #if defined(EMSCRIPTEN)
 	#include <emscripten/emscripten.h>
@@ -398,6 +399,12 @@ static ha_bool p2pSignalProcess(const humblenet::HumblePeer::Message *msg, void 
 			}
 			internal_set_stun_servers(humbleNetState.context, stunServers.data(), stunServers.size());
 			//            internal_set_turn_server( server.c_str(), username.c_str(), password.c_str() );
+
+			HumbleNet_Event event = {.common={HUMBLENET_EVENT_P2P_CONNECTED, 0}};
+			humblenet_event_push( event );
+			event.type = HUMBLENET_EVENT_P2P_ASSIGN_PEER;
+			event.peer.peer_id = humbleNetState.myPeerId;
+			humblenet_event_push( event );
 		}
 			break;
 
@@ -439,11 +446,17 @@ static ha_bool p2pSignalProcess(const humblenet::HumblePeer::Message *msg, void 
 			auto it = humbleNetState.pendingPeerConnectionsOut.find(peer);
 			if (it == humbleNetState.pendingPeerConnectionsOut.end()) {
 				switch (reject->reason()) {
-					case HumblePeer::P2PRejectReason::NotFound:
-						LOG("Peer %u does not exist\n", peer);
+					case HumblePeer::P2PRejectReason::NotFound: {
+						LOG( "Peer %u does not exist\n", peer );
+						HumbleNet_Event event = {.peer={HUMBLENET_EVENT_PEER_NOT_FOUND, 0, peer}};
+						humblenet_event_push( event );
+					}
 						break;
-					case HumblePeer::P2PRejectReason::PeerRefused:
-						LOG("Peer %u rejected our connection\n", peer);
+					case HumblePeer::P2PRejectReason::PeerRefused: {
+						LOG( "Peer %u rejected our connection\n", peer );
+						HumbleNet_Event event = {.peer={HUMBLENET_EVENT_PEER_REJECTED, 0, peer}};
+						humblenet_event_push( event );
+					}
 						break;
 				}
 				return true;
@@ -462,6 +475,9 @@ static ha_bool p2pSignalProcess(const humblenet::HumblePeer::Message *msg, void 
 			auto connect = reinterpret_cast<const HumblePeer::P2PConnected*>(msg->message());
 			
 			LOG("Established connection to peer %u", connect->peerId());
+
+			HumbleNet_Event event = {.peer={HUMBLENET_EVENT_PEER_CONNECTED, 0, connect->peerId()}};
+			humblenet_event_push( event );
 		}
 			break;
 			
@@ -470,6 +486,9 @@ static ha_bool p2pSignalProcess(const humblenet::HumblePeer::Message *msg, void 
 			auto disconnect = reinterpret_cast<const HumblePeer::P2PDisconnect*>(msg->message());
 			
 			LOG("Disconnecting peer %u", disconnect->peerId());
+
+			HumbleNet_Event event = {.peer={HUMBLENET_EVENT_PEER_DISCONNECTED, 0, disconnect->peerId()}};
+			humblenet_event_push( event );
 		}
 			break;
 			
@@ -506,9 +525,36 @@ static ha_bool p2pSignalProcess(const humblenet::HumblePeer::Message *msg, void 
 			auto resolved = reinterpret_cast<const HumblePeer::AliasResolved*>(msg->message());
 			
 			internal_alias_resolved_to( resolved->alias()->c_str(), resolved->peerId() );
+
+			HumbleNet_Event event = {.common={ HUMBLENET_EVENT_ALIAS_RESOLVED, resolved->requestId() } };
+			if (resolved->peerId()) {
+				event.peer.peer_id = resolved->peerId();
+			} else {
+				event.type = HUMBLENET_EVENT_ALIAS_NOT_FOUND;
+#pragma message ("TODO provide better error message that maybe includes the hostname?")
+				strcpy(event.error.error, "Failed to resolve alias");
+			}
+			humblenet_event_push(event);
 		}
 			break;
-			
+		case HumblePeer::MessageType::AliasRegisterError:
+		{
+			auto message = reinterpret_cast<const HumblePeer::Error*>(msg->message());
+
+			HumbleNet_Event event = {.common={ HUMBLENET_EVENT_ALIAS_REGISTER_ERROR, message->requestId() } };
+#pragma message ("TODO provide better error/alo message including contents from peer server?")
+			strcpy(event.error.error, "Failed to register alias");
+			humblenet_event_push(event);
+		}
+			break;
+		case HumblePeer::MessageType::AliasRegisterSuccess:
+		{
+			auto message = reinterpret_cast<const HumblePeer::Success*>(msg->message());
+
+			HumbleNet_Event event = {.common={ HUMBLENET_EVENT_ALIAS_REGISTER_SUCCESS, message->requestId() } };
+			humblenet_event_push(event);
+		}
+			break;
 		default:
 			LOG("p2pSignalProcess unhandled %s\n", HumblePeer::EnumNameMessageType(msgType));
 			break;
