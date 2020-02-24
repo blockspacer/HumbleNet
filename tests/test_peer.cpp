@@ -250,9 +250,12 @@ void main_loop()
 				break;
 //			case HUMBLENET_EVENT_PEER_CONNECTED:
 //			case HUMBLENET_EVENT_PEER_DISCONNECTED:
-//			case HUMBLENET_EVENT_PEER_REJECTED:
-//			case HUMBLENET_EVENT_PEER_NOT_FOUND:
-//
+			case HUMBLENET_EVENT_PEER_REJECTED:
+				std::cout << "Peer rejected: " << event.peer.peer_id << std::endl;
+				break;
+			case HUMBLENET_EVENT_PEER_NOT_FOUND:
+				std::cout << "Peer not found: " << event.peer.peer_id << std::endl;
+				break;
 			case HUMBLENET_EVENT_ALIAS_RESOLVED:
 				std::cout << "Alias resolved: " << event.peer.peer_id << std::endl;
 				break;

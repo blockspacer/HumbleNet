@@ -443,30 +443,29 @@ static ha_bool p2pSignalProcess(const humblenet::HumblePeer::Message *msg, void 
 			auto reject = reinterpret_cast<const HumblePeer::P2PReject*>(msg->message());
 			PeerId peer = static_cast<PeerId>(reject->peerId());
 
-			auto it = humbleNetState.pendingPeerConnectionsOut.find(peer);
-			if (it == humbleNetState.pendingPeerConnectionsOut.end()) {
-				switch (reject->reason()) {
-					case HumblePeer::P2PRejectReason::NotFound: {
-						LOG( "Peer %u does not exist\n", peer );
-						HumbleNet_Event event = {.peer={HUMBLENET_EVENT_PEER_NOT_FOUND, 0, peer}};
-						humblenet_event_push( event );
-					}
-						break;
-					case HumblePeer::P2PRejectReason::PeerRefused: {
-						LOG( "Peer %u rejected our connection\n", peer );
-						HumbleNet_Event event = {.peer={HUMBLENET_EVENT_PEER_REJECTED, 0, peer}};
-						humblenet_event_push( event );
-					}
-						break;
+			switch (reject->reason()) {
+				case HumblePeer::P2PRejectReason::NotFound: {
+					LOG( "Peer %u does not exist\n", peer );
+					HumbleNet_Event event = {.peer={HUMBLENET_EVENT_PEER_NOT_FOUND, 0, peer}};
+					humblenet_event_push( event );
 				}
-				return true;
+					break;
+				case HumblePeer::P2PRejectReason::PeerRefused: {
+					LOG( "Peer %u rejected our connection\n", peer );
+					HumbleNet_Event event = {.peer={HUMBLENET_EVENT_PEER_REJECTED, 0, peer}};
+					humblenet_event_push( event );
+				}
+					break;
 			}
 
-			Connection *conn = it->second;
-			assert(conn != NULL);
+			auto it = humbleNetState.pendingPeerConnectionsOut.find(peer);
+			if (it != humbleNetState.pendingPeerConnectionsOut.end()) {
+				Connection *conn = it->second;
+				assert(conn != NULL);
 
-			blacklist_peer(peer);
-			humblenet_connection_set_closed(conn);
+				blacklist_peer(peer);
+				humblenet_connection_set_closed(conn);
+			}
 		}
 			break;
 
